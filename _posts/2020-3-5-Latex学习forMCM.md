@@ -5,13 +5,6 @@ description: LaTex for MCM
 tag: 排版
 ---
 
-### 基础知识与介绍
-
-
-
-
-
-
 ### 使用已完成的美赛模板
 
 
@@ -31,6 +24,9 @@ tag: 排版
 
     编译引擎出错[latex or pdflatex]
     Solution: %!TEX program=xelatex
+
+    Missing $ inserted
+    Solution: 该句中的下划线前加'\'
 
 ### 参考
 
