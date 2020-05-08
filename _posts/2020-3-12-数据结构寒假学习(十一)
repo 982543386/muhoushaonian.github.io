@@ -1,0 +1,187 @@
+---
+layout: post
+title: 清华大学-邓俊辉MOOC数据结构与算法学习笔记(十一)
+description: Nope
+tag: 数据结构
+---
+
+### 07-A 二叉搜索树(Binary Search Tree)概述
+
+*循关键码访问*
+· 数据项之间, 依照各自的关键码彼此区分(call-by-key)
+
+条件: 关键码之间支持大小比较与相等比对
+
+· 数据集合中的数据项, 统一地表示和实现为词条entry形式
+
+```
+// 词条模板类实现
+template <typename K, typename V> struct Entry {
+  K key;
+  V value;
+  Entry(K k = K(), V v = V() ) : key(K), value(v) {}; // 默认构造函数
+  Entry(Entry<K, V> const & e) : key(e.key), value(e.value) {}; // 克隆
+  // 比较器、判等器
+  bool operator< (Entry<K,V> const & e ) {return key < e.key; } // 小于
+  bool operator> (Entry<K,V> const & e ) {return key > e.key; } // 大于
+  bool operator== (Entry<K,V> const & e ) {return key == e.key; } // 等于
+  bool operator!= (Entry<K,V> const & e ) {return key != e.key; } // 等于
+}
+```
+
+BST ~ 词条 ~ 关键码
+
+二叉搜索树首先要满足是二叉树, 然后需要满足顺序性: 任一节点均不小于/不大于其左/右后代
+
+为简化起见, 禁止重复词条[相关习题:[7-10/7-13/8-3]]
+
+顺序性虽然只是对局部特征的刻画, 但由此却可导出某种全局特征(单调性)
+
+单调性: BST的中序遍历序列, 必然单调非降(这一性质, 也是BST的充要条件)
+
+[微观上满足顺序性, 宏观上满足单调性]
+
+```
+\\ BST模板类实现
+
+
+```
+
+### 07-B 二叉搜索树的算法与实现
+*查找*
+减而治之: 从根节点出发, 逐步缩小查找范围, 直到发现目标, 或查找范围缩小至空树.
+
+```
+template <typename T> BinNodePosi(T) & BST<T>::search(const T & e){
+  return searchIn(_root, e, _hot = NULL); //从根节点启动查找
+}
+static BinNodePosi(T) & searchIn( //典型的尾递归, 可改为迭代版
+  BinNodePosi(T) & v, //当前树根
+  const T & e, //目标关键码
+  BinNodePosi(T) & hot // 记忆热点)
+{
+  if( !v || (e == v->data ) ) { return v; } // !v: 子树飞空
+  hot = v;
+  return searchIn(((e < v->data) ? v->lChild : v->rChild), e, hot);
+}
+```
+
+返回的引用值: 成功时, 指向一个关键码为e且真实存在的节点; 失败时, 指向最后一次试图转向
+的空节点NULL[不妨将此空节点转化为一个数值为e的哨兵节点]
+
+*插入*
+· 先借助searh(e)确定插入位置及方向, 再将新节点作为叶子插入
+
+· 若e尚不存在, 则_hot为新节点的父亲
+
+```
+template <typename T> BinNodePosi(T) BST<T>::insert(const T & e){
+  BinNodePosi(T) & x = search( e );  // 查找目标(留意_hot的设置)
+  if(!x) { // 避免插入重复元素
+    x = new BinNode<T>(e, _hot); // 在x处创建新节点, 以_hot为父亲
+    _size++;
+    updateHeightAbove(x); // 更新全树规模, 更新x及其历代祖先的高度
+  }
+  return x; // 无论e是否存在于原树中, 至此总有x->data == e
+}
+
+```
+
+*删除*
+```
+// 删除算法的整体框架
+template <typename T> bool BST<T>::remove( const T & e){
+  BinNodePosi(T) & x = search( e );  // 定位目标节点
+  if( !x ) return false;  // 确认目标存在
+  removeAt(x, _hot);      // 分两大类情况实施删除, 更新全树规模
+  _size--;                // 更新全树规模
+  updateHeightAbove(_hot); // 更新_hot及其历代祖先的高度
+  return true;
+} // 删除成功与否, 由返回值指示
+```
+
+删除的第一种情况: 若待删除节点的某一子树为空, 则用另一子树替代当前节点
+
+删除的第二种情况: 先将待删除节点与其直接后继节点进行替换, 然后再利用第一种情况实现的算法
+```
+// 具体实现
+template <typename T> static BinNodePosi(T)
+removeAt(BinNodePosi(T) & x, BinNodePosi(T) & hot){
+  BinNodePosi(T) w = x; // 实际被摘除的节点, 初值同x
+  BinNodePosi(T) succ = NULL; // 实际被删除节点的接替者
+  if(! HasLChild(*x) ) {succ = x = x -> rChild; }
+  else if(! HasRChild(*x) ) {succ = x = x -> lChild; }
+  else { /*...左右子树并存的情况...*/、
+  w = w->succ();
+  swap( x-> data, w->data);  // 令x与其后继w互换数据
+  BinNodePosi(T) u = w->parent; // 原问题转化为, 摘除非二度的节点w
+  (u == x ? u-> rChild : u->lChild) = succ = w->rChild; }
+  hot = w->parent;  // 记录实际被删除节点的父亲
+  if( succ ) {succ -> parent = hot; } // 将被删除节点的接替者与hot相联
+  release( w-> data );
+  release( w); // 释放被删除节点
+  return succ; // 返回接替者
+}
+```
+
+### 07-C 平衡与等价
+前述search()、insert()和remove()等主要接口的运行时间, 均线性正比于二叉搜索树的实现.
+但是在最坏情况下, 二叉搜索树可能彻底地退化为列表, 此时的查找效率可能会线性正比于数据集的
+规模. O(n)
+
+*随机生成*
+
+不妨设各节点对应于n个互异关键码(e_{1}, e_{2}, ..., e_{n}). 于是按照每一排列,
+γ = (e_{i_{1}},e_{i_{2}},...), 只要从空树开始, 通过一次执行insert(e_{i_{k}}), 即可
+得到这n个关键码的一颗二叉搜索树T(γ). n个互异关键码, 都可以构成n!种全排列, 若各排列作为
+输入序列的概率均等, 即可在一定程度上反映二叉搜索树的平均查找性能, 在这一随机意义下, 二叉
+搜索树的平均高度为O(logn)
+
+*随机组成*
+
+随机组成即 假定n个互异节点同时给定, 然后在遵守顺序性的前提下, 随机确定它们之间的拓扑联接.
+在这一随机意义下, 二叉搜索树的平均高度为O(sqrt(n))
+
+*理想平衡*
+
+节点数目固定时, 兄弟子树高度越接近(平衡), 全树也将倾向于更低
+
+由n个节点组成的二叉树, 高度不低于[log2n] —— 恰为[log2n]时, 称作理想平衡
+
+*适度平衡*
+
+理想平衡出现概率极低、维护成本过高, 故须适当地放松标准
+
+高度渐进地不超过O(logn), 即可称作适度平衡
+
+适度平衡的BST, 称作平衡二叉搜索树(BBST)
+
+*等价BST*
+
+若两颗二叉搜索树的中序遍历序列相同, 则称它们彼此等价, 反之亦然.
+
+这种等价BST可以归纳为"上下可变、左右不乱":
+
+上下可变: 联接关系不尽相同, 承接关系可能颠倒
+
+左右不乱: 中序遍历序列完全一致, 全局单调非增
+
+*局部性*
+
+平衡二叉搜索树的适度平衡性, 都是通过对树中每一局部增加某种限制条件来保证的.
+
+除了适度平衡性, 还具有如下局部性:
+
+1) 经过单次动态修改操作后, 至多只有O(1)处局部不再满足限制条件
+
+2) 总可在O(logn)时间内, 使这O(1)处局部重新满足限制条件
+
+局部性意味着: 刚刚失去平衡的二叉搜索树, 必然可以迅速转换为一颗等价的平衡二叉搜索树.
+
+*等价变换旋转调整*
+
+![](/images/post_image/等价变换.png)
+
+TODO: 需加深理解  
+
+### 07-D AVL树
